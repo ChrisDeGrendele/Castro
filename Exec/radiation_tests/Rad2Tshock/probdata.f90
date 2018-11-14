@@ -8,8 +8,9 @@ module probdata_module
   real(rt)        , save :: rho1 = 1.24793794736e-12_rt
   real(rt)        , save :: T1 = 207.756999533e0_rt
   real(rt)        , save :: v1 = 102986.727159e0_rt
+  integer(rt)     , save :: dir_int = 2   ! Direction integer x, y ,z = 1,2,3?
   
-  namelist /fortin/ rho0, T0, v0, rho1, T1, v1
+  namelist /fortin/ rho0, T0, v0, rho1, T1, v1, dir_int
 
   ! for convenience
   real(rt)        , save :: xmin, xmax, ymin, ymax, zmin, zmax

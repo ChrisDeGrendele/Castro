@@ -79,16 +79,30 @@ subroutine ca_initdata(level,time,lo,hi,nscal, &
   real(rt)         :: xlo(3), xhi(3)
   
   integer :: i,j,k
-  real(rt)         :: xcell, rhoInv
+  real(rt)         :: length_cell,length_min, rhoInv
   type(eos_t) :: eos_state
 
+  
+  
   do k = lo(3), hi(3)  
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
-  
-           xcell = xmin  + delta(1) * (dble(i) + 0.5e0_rt)
+
+           !Provides the simulation to be run in the x,y,or z direction
+           !where length direction is the length side in a square prism  
+           if (dir_int == 1) then
+              length_min = xmin
+           else if (dir_int == 2) then
+              length_min = ymin
+           else if (dir_int == 3) then
+              length_min = zmin
+           else
+              stop "Invalid Direction, input integer int_dir = [1,3] ."
+           endif
            
-           if (xcell < 0.e0_rt) then
+           length_cell = length_min  + delta(1) * (dble(i) + 0.5e0_rt)
+           
+           if (length_cell < 0.e0_rt) then
               state(i,j,k,URHO) = rho0
            
               ! set the composition to be all in the first species
@@ -163,15 +177,28 @@ subroutine ca_initrad(level,time,lo,hi,nrad, &
 
   ! local variables
   integer :: i, j, k, igroup
-  real(rt)         xcell, t
+  real(rt)         length_cell,length_min, t
 
   do k = lo(3), hi(3)
      do j = lo(2), hi(2)
         do i = lo(1), hi(1)
 
-           xcell = xmin + delta(1) * (dble(i) + 0.5e0_rt)
+           !Provides the simulation to be run in the x,y,or z direction
+           !where length direction is the length side in a square prism
+           if (dir_int == 1) then
+              length_min = xmin
+           else if (dir_int == 2) then
+              length_min = ymin
+           else if (dir_int == 3) then
+              length_min = zmin
+           else
+              stop "Invalid Direction, input integer int_dir = [1,3] ."
+           endif
+
+              
+           length_cell = length_min + delta(1) * (dble(i) + 0.5e0_rt)
    
-           if (xcell < 0.e0_rt) then
+           if (length_cell < 0.e0_rt) then
               T = T0
            else
               T = T1
