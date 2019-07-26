@@ -14,6 +14,8 @@ USE_DIFFUSION = TRUE
 
 USE_POST_SIM = TRUE
 
+GPU_COMPATIBLE_PROBLEM = TRUE
+
 CASTRO_HOME := ../../..
 
 # This sets the EOS directory in $(CASTRO_HOME)/EOS

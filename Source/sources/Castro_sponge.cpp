@@ -19,16 +19,16 @@ Castro::construct_old_sponge_source(MultiFab& source, MultiFab& state, Real time
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(state, true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(state, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
-	const Box& bx = mfi.tilebox();
+        const Box& bx = mfi.tilebox();
 
-	ca_sponge(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-		  BL_TO_FORTRAN_3D(state[mfi]),
-		  BL_TO_FORTRAN_3D(source[mfi]),
-		  BL_TO_FORTRAN_3D(volume[mfi]),
-		  ZFILL(dx), dt, time, mult_factor);
-
+#pragma gpu box(bx)
+        ca_sponge(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+                  BL_TO_FORTRAN_ANYD(state[mfi]),
+                  BL_TO_FORTRAN_ANYD(source[mfi]),
+                  BL_TO_FORTRAN_ANYD(volume[mfi]),
+                  AMREX_REAL_ANYD(dx), dt, time, mult_factor);
     }
 
 }
@@ -51,16 +51,16 @@ Castro::construct_new_sponge_source(MultiFab& source, MultiFab& state_old, Multi
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(state_old, true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(state_old, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
         const Box& bx = mfi.tilebox();
 
-        ca_sponge(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-                  BL_TO_FORTRAN_3D(state_old[mfi]),
-                  BL_TO_FORTRAN_3D(source[mfi]),
-                  BL_TO_FORTRAN_3D(volume[mfi]),
-                  ZFILL(dx), dt, time, mult_factor_old);
-
+#pragma gpu box(bx)
+        ca_sponge(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+                  BL_TO_FORTRAN_ANYD(state_old[mfi]),
+                  BL_TO_FORTRAN_ANYD(source[mfi]),
+                  BL_TO_FORTRAN_ANYD(volume[mfi]),
+                  AMREX_REAL_ANYD(dx), dt, time, mult_factor_old);
     }
 
     // Now update to the new-time sponge parameter values
@@ -71,17 +71,30 @@ Castro::construct_new_sponge_source(MultiFab& source, MultiFab& state_old, Multi
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(state_new, true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(state_new, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
-	const Box& bx = mfi.tilebox();
+        const Box& bx = mfi.tilebox();
 
-	ca_sponge(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-                  BL_TO_FORTRAN_3D(state_new[mfi]),
-		  BL_TO_FORTRAN_3D(source[mfi]),
-		  BL_TO_FORTRAN_3D(volume[mfi]),
-		  ZFILL(dx), dt, time, mult_factor_new);
-
+#pragma gpu box(bx)
+        ca_sponge(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+                  BL_TO_FORTRAN_ANYD(state_new[mfi]),
+                  BL_TO_FORTRAN_ANYD(source[mfi]),
+                  BL_TO_FORTRAN_ANYD(volume[mfi]),
+                  AMREX_REAL_ANYD(dx), dt, time, mult_factor_new);
     }
 
 }
+
+void
+Castro::sponge_init()
+{
+    ca_allocate_sponge_params();
+}
+
+void
+Castro::sponge_finalize()
+{
+    ca_deallocate_sponge_params();
+}
+
 #endif

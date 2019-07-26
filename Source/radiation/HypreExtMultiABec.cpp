@@ -25,7 +25,7 @@ void HypreExtMultiABec::a2Coefficients(int level, const MultiFab &a2, int dir)
   int ngrow=0;
 
   if (!a2coefs[level]) {
-    a2coefs[level].reset(new Tuple<MultiFab, BL_SPACEDIM>);
+    a2coefs[level].reset(new Array<MultiFab, BL_SPACEDIM>);
  
     for (int i = 0; i < BL_SPACEDIM; i++) {
       BoxArray edge_boxes(grids[level]);
@@ -48,7 +48,7 @@ void HypreExtMultiABec::cCoefficients(int level, const MultiFab &c, int dir)
   int ngrow=0;
 
   if (!ccoefs[level]) {
-    ccoefs[level].reset(new Tuple<MultiFab, BL_SPACEDIM>);
+    ccoefs[level].reset(new Array<MultiFab, BL_SPACEDIM>);
  
     for (int i = 0; i < BL_SPACEDIM; i++) {
       BoxArray edge_boxes(grids[level]);
@@ -71,7 +71,7 @@ void HypreExtMultiABec::d1Coefficients(int level, const MultiFab &d1, int dir)
   int ngrow=0;
 
   if (!d1coefs[level]) {
-    d1coefs[level].reset(new Tuple<MultiFab, BL_SPACEDIM>);
+    d1coefs[level].reset(new Array<MultiFab, BL_SPACEDIM>);
 
     for (int i = 0; i < BL_SPACEDIM; i++) {
       (*d1coefs[level])[i].define(grids[level], dmap[level], ncomp, ngrow);
@@ -92,7 +92,7 @@ void HypreExtMultiABec::d2Coefficients(int level, const MultiFab &d2, int dir)
   int ngrow=0;
 
   if (!d2coefs[level]) {
-    d2coefs[level].reset(new Tuple<MultiFab, BL_SPACEDIM>);
+    d2coefs[level].reset(new Array<MultiFab, BL_SPACEDIM>);
  
     for (int i = 0; i < BL_SPACEDIM; i++) {
       BoxArray edge_boxes(grids[level]);
@@ -185,7 +185,8 @@ void HypreExtMultiABec::loadMatrix()
     stencil_indices[i] = i;
   }
 
-  Real *mat;
+  FArrayBox matfab;
+  FArrayBox mat_tmpfab;
   for (int level = crse_level; level <= fine_level; level++) {
     int part = level - crse_level;
 
@@ -193,8 +194,9 @@ void HypreExtMultiABec::loadMatrix()
       int i = mfi.index();
       const Box &reg = grids[level][i];
 
-      int volume = reg.numPts();
-      mat = hypre_CTAlloc(double, size*volume);
+      matfab.resize(reg,size);
+      matfab.setVal(0.0);
+      Real* mat = matfab.dataPtr();
 
       // build matrix interior
 
@@ -237,12 +239,9 @@ void HypreExtMultiABec::loadMatrix()
       // Boundary conditions will be corrected below.
 
       // update matrix
-
-#if 0
-      HYPRE_SStructMatrixAddToBoxValues(A, part, loV(reg), hiV(reg), 0,
-                                        size, stencil_indices, mat);
-#else
-      Real *mat_tmp = hypre_CTAlloc(double, volume);
+      mat_tmpfab.resize(reg);
+      Real* mat_tmp = mat_tmpfab.dataPtr();
+      int volume = reg.numPts();
       for (int s = 0; s < size; s++) {
 	for (int k = 0; k < volume; k++) {
 	  mat_tmp[k] = mat[k * size + s];
@@ -250,10 +249,6 @@ void HypreExtMultiABec::loadMatrix()
 	HYPRE_SStructMatrixAddToBoxValues(A, part, loV(reg), hiV(reg), 0,
                                           1, &stencil_indices[s], mat_tmp);
       }
-      hypre_TFree(mat_tmp);
-#endif
-
-      hypre_TFree(mat);
     }
 
     // At this point we begin adding matrix entries for points around

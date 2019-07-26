@@ -20,9 +20,7 @@ COMP	   ?= gnu
 USE_MPI    ?= FALSE
 USE_OMP    ?= FALSE
 
-DIMENSION_AGNOSTIC = TRUE
-
-DEFINES += -DNUM_ADV=1
+NUMADV := 1
 
 # This sets the EOS directory in Castro/EOS
 EOS_DIR     ?= gamma_law

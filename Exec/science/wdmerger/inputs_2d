@@ -158,6 +158,9 @@ castro.riemann_solver = 0
 # the iterations don't converge, but instead to do additional bisection iteration.
 castro.cg_blend = 2
 
+# Limit the maximum speed in the Riemann solver
+castro.riemann_speed_limit = 2.99792458e9
+
 # Use a lagged predictor estimate of the source terms in the hydro
 castro.source_term_predictor = 1
 
@@ -186,9 +189,6 @@ castro.small_dens = 1.e-5
 # Disable the possibility of having a negative energy
 castro.allow_small_energy = 0
 
-# Don't update the total energy using the internal energy
-castro.dual_energy_update_E_from_e = 0
-
 # Threshold for when to use the internal energy in calculating pressure
 castro.dual_energy_eta1 = 1.0e-3
 
@@ -204,12 +204,6 @@ castro.dtnuc_e = 0.1
 
 # Limit timestep based on nuclear burning considerations (changes in species)
 castro.dtnuc_X = 0.1
-
-# Which method to use for estimating de/dt and dX/dt
-castro.dtnuc_mode = 1
-
-# Limit zone size based on nuclear burning considerations
-castro.dxnuc = 0.1
 
 # Minimum temperature for allowing nuclear burning
 castro.react_T_min = 1.0e8
@@ -336,9 +330,6 @@ castro.v = 1
 # Control verbosity in Gravity.cpp
 gravity.v = 1
 
-# Control verbosity in the multigrid solver
-mg.v = 0
-
 # State variables to add to plot files
 amr.plot_vars = ALL
 
@@ -350,6 +341,3 @@ amr.small_plot_vars = density
 
 # Name of the diagnostic sum output files
 amr.data_log = grid_diag.out star_diag.out species_diag.out amr_diag.out bndy_diag.out primary_diag.out secondary_diag.out extrema_diag.out rotation_diag.out
-
-# Write out plotfile data in single precision
-fab.format = NATIVE_32

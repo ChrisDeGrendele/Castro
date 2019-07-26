@@ -6,6 +6,10 @@ DEBUG      = FALSE
 
 DIM        = 2
 
+ifneq ($(DIM),2)
+  $(error Error: this problem is only supported in 2D)
+endif
+
 COMP	   = gnu
 
 USE_MPI    = TRUE

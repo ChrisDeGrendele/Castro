@@ -28,8 +28,10 @@ Castro::construct_old_gravity(int amr_iteration, int amr_ncycle, Real time)
 
     // Do level solve at beginning of time step in order to compute the
     // difference between the multilevel and the single level solutions.
+    // Note that we don't need to do this solve for single-level runs,
+    // since the solution at the end of the last timestep won't have changed.
 
-    if (gravity->get_gravity_type() == "PoissonGrav")
+    if (gravity->get_gravity_type() == "PoissonGrav" && parent->finestLevel() > 0)
     {
 
 	// Create a copy of the current (composite) data on this level.
@@ -37,7 +39,7 @@ Castro::construct_old_gravity(int amr_iteration, int amr_ncycle, Real time)
 	MultiFab comp_phi;
 	Vector<std::unique_ptr<MultiFab> > comp_gphi(BL_SPACEDIM);
 
-        if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() && level < parent->finestLevel()) {
+        if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() && level < parent->finestLevel() && level <= gravity->get_max_solve_level()) {
 
 	    comp_phi.define(phi_old.boxArray(), phi_old.DistributionMap(), phi_old.nComp(), phi_old.nGrow());
 	    MultiFab::Copy(comp_phi, phi_old, 0, 0, phi_old.nComp(), phi_old.nGrow());
@@ -50,8 +52,7 @@ Castro::construct_old_gravity(int amr_iteration, int amr_ncycle, Real time)
 	}
 
 	if (verbose && ParallelDescriptor::IOProcessor()) {
-	    std::cout << " " << '\n';
-	    std::cout << "... old-time level solve at level " << level << '\n';
+	    std::cout << "... old-time level Poisson gravity solve at level " << level << std::endl << std::endl;
 	}
 
 	int is_new = 0;
@@ -65,7 +66,7 @@ Castro::construct_old_gravity(int amr_iteration, int amr_ncycle, Real time)
 			       amrex::GetVecOfPtrs(gravity->get_grad_phi_prev(level)),
 			       is_new);
 
-        if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() && level < parent->finestLevel()) {
+        if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() && level < parent->finestLevel() && level <= gravity->get_max_solve_level()) {
 
 	    // Subtract the level solve from the composite solution.
 
@@ -138,12 +139,11 @@ Castro::construct_new_gravity(int amr_iteration, int amr_ncycle, Real time)
 	// Subtract off the (composite - level) contribution for the purposes
 	// of the level solve. We'll add it back later.
 
-	if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() && level < parent->finestLevel())
+	if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() && level < parent->finestLevel() && level <= gravity->get_max_solve_level())
 	    phi_new.minus(comp_minus_level_phi, 0, 1, 0);
 
 	if (verbose && ParallelDescriptor::IOProcessor()) {
-	    std::cout << " " << '\n';
-	    std::cout << "... new-time level solve at level " << level << '\n';
+	    std::cout << "... new-time level Poisson gravity solve at level " << level << std::endl << std::endl;
 	}
 
 	int is_new = 1;
@@ -153,7 +153,7 @@ Castro::construct_new_gravity(int amr_iteration, int amr_ncycle, Real time)
 			       amrex::GetVecOfPtrs(gravity->get_grad_phi_curr(level)),
 			       is_new);
 
-	if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() == 1 && level < parent->finestLevel()) {
+	if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() == 1 && level < parent->finestLevel() && level <= gravity->get_max_solve_level()) {
 
 	    if (gravity->test_results_of_solves() == 1) {
 
@@ -194,7 +194,7 @@ Castro::construct_new_gravity(int amr_iteration, int amr_ncycle, Real time)
 
     gravity->get_new_grav_vector(level, grav_new, time);
 
-    if (gravity->get_gravity_type() == "PoissonGrav") {
+    if (gravity->get_gravity_type() == "PoissonGrav" && level <= gravity->get_max_solve_level()) {
 
 	if (gravity->NoComposite() != 1 && gravity->DoCompositeCorrection() == 1 && level < parent->finestLevel()) {
 
@@ -246,15 +246,16 @@ void Castro::construct_old_gravity_source(MultiFab& source, MultiFab& state, Rea
     {
 	const Box& bx = mfi.tilebox();
 
-	ca_gsrc(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-		ARLIM_3D(domlo), ARLIM_3D(domhi),
-		BL_TO_FORTRAN_3D(state[mfi]),
+#pragma gpu box(bx)
+	ca_gsrc(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+		AMREX_INT_ANYD(domlo), AMREX_INT_ANYD(domhi),
+		BL_TO_FORTRAN_ANYD(state[mfi]),
 #ifdef SELF_GRAVITY
-		BL_TO_FORTRAN_3D(phi_old[mfi]),
-		BL_TO_FORTRAN_3D(grav_old[mfi]),
+		BL_TO_FORTRAN_ANYD(phi_old[mfi]),
+		BL_TO_FORTRAN_ANYD(grav_old[mfi]),
 #endif
-		BL_TO_FORTRAN_3D(source[mfi]),
-		ZFILL(dx),dt,&time);
+		BL_TO_FORTRAN_ANYD(source[mfi]),
+		AMREX_REAL_ANYD(dx), dt, time);
 
     }
 
@@ -285,22 +286,23 @@ void Castro::construct_new_gravity_source(MultiFab& source, MultiFab& state_old,
 	{
 	    const Box& bx = mfi.tilebox();
 
-	    ca_corrgsrc(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-			ARLIM_3D(domlo), ARLIM_3D(domhi),
-			BL_TO_FORTRAN_3D(state_old[mfi]),
-			BL_TO_FORTRAN_3D(state_new[mfi]),
+#pragma gpu box(bx)
+	    ca_corrgsrc(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+			AMREX_INT_ANYD(domlo), AMREX_INT_ANYD(domhi),
+			BL_TO_FORTRAN_ANYD(state_old[mfi]),
+			BL_TO_FORTRAN_ANYD(state_new[mfi]),
 #ifdef SELF_GRAVITY
-			BL_TO_FORTRAN_3D(phi_old[mfi]),
-			BL_TO_FORTRAN_3D(phi_new[mfi]),
-			BL_TO_FORTRAN_3D(grav_old[mfi]),
-			BL_TO_FORTRAN_3D(grav_new[mfi]),
+			BL_TO_FORTRAN_ANYD(phi_old[mfi]),
+			BL_TO_FORTRAN_ANYD(phi_new[mfi]),
+			BL_TO_FORTRAN_ANYD(grav_old[mfi]),
+			BL_TO_FORTRAN_ANYD(grav_new[mfi]),
 #endif
-			BL_TO_FORTRAN_3D(volume[mfi]),
-			BL_TO_FORTRAN_3D((*mass_fluxes[0])[mfi]),
-			BL_TO_FORTRAN_3D((*mass_fluxes[1])[mfi]),
-			BL_TO_FORTRAN_3D((*mass_fluxes[2])[mfi]),
-			BL_TO_FORTRAN_3D(source[mfi]),
-			ZFILL(dx),dt,&time);
+			BL_TO_FORTRAN_ANYD(volume[mfi]),
+			BL_TO_FORTRAN_ANYD((*mass_fluxes[0])[mfi]),
+			BL_TO_FORTRAN_ANYD((*mass_fluxes[1])[mfi]),
+			BL_TO_FORTRAN_ANYD((*mass_fluxes[2])[mfi]),
+			BL_TO_FORTRAN_ANYD(source[mfi]),
+			AMREX_REAL_ANYD(dx), dt, time);
 
 	}
     }

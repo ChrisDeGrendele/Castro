@@ -78,11 +78,11 @@ Castro::volWgtSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-#pragma gpu
-	ca_summass(AMREX_ARLIM_ARG(lo), AMREX_ARLIM_ARG(hi),
-                   BL_TO_FORTRAN_3D(fab),
-		   ZFILL(dx),
-                   BL_TO_FORTRAN_3D(volume[mfi]),
+#pragma gpu box(box)
+	ca_summass(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi),
+                   BL_TO_FORTRAN_ANYD(fab),
+		   AMREX_REAL_ANYD(dx),
+                   BL_TO_FORTRAN_ANYD(volume[mfi]),
                    AMREX_MFITER_REDUCE_SUM(&sum));
 
     }
@@ -119,7 +119,6 @@ Castro::volWgtSquaredSum (const std::string& name,
     {
         FArrayBox& fab = (*mf)[mfi];
     
-        Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
@@ -129,10 +128,9 @@ Castro::volWgtSquaredSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_sumsquared(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
-		      ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
-
-        sum += s;
+#pragma gpu box(box)
+	ca_sumsquared(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi), BL_TO_FORTRAN_ANYD(fab),
+		      AMREX_REAL_ANYD(dx), BL_TO_FORTRAN_ANYD(volume[mfi]), AMREX_MFITER_REDUCE_SUM(&sum));
     }
 
     if (!local)
@@ -168,7 +166,6 @@ Castro::locWgtSum (const std::string& name,
     {
         const FArrayBox& fab = (*mf)[mfi];
     
-        Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
@@ -178,10 +175,10 @@ Castro::locWgtSum (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_sumlocmass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
-		      ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir);
+#pragma gpu box(box)
+	ca_sumlocmass(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi), BL_TO_FORTRAN_ANYD(fab),
+		      AMREX_REAL_ANYD(dx), BL_TO_FORTRAN_ANYD(volume[mfi]), AMREX_MFITER_REDUCE_SUM(&sum), idir);
 
-        sum += s;
     }
 
     if (!local)
@@ -218,7 +215,6 @@ Castro::locWgtSum2D (const std::string& name,
     {
         const FArrayBox& fab = (*mf)[mfi];
     
-        Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
@@ -228,10 +224,9 @@ Castro::locWgtSum2D (const std::string& name,
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-	ca_sumlocmass2d(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
-			ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir1,idir2);
-
-        sum += s;
+#pragma gpu box(box)
+	ca_sumlocmass2d(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi), BL_TO_FORTRAN_ANYD(fab),
+			AMREX_REAL_ANYD(dx), BL_TO_FORTRAN_ANYD(volume[mfi]), AMREX_MFITER_REDUCE_SUM(&sum), idir1, idir2);
     }
 
     if (!local)
@@ -264,9 +259,9 @@ Castro::volWgtSumMF (const MultiFab& mf, int comp, bool local)
         // whatever quantity is passed in, not strictly the "mass".
         //
 
-#pragma gpu
-	ca_summass(AMREX_ARLIM_ARG(lo),AMREX_ARLIM_ARG(hi),BL_TO_FORTRAN_N_3D(fab,comp),
-		   ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),
+#pragma gpu box(box)
+	ca_summass(AMREX_INT_ANYD(lo),AMREX_INT_ANYD(hi),BL_TO_FORTRAN_N_ANYD(fab,comp),
+		   AMREX_REAL_ANYD(dx),BL_TO_FORTRAN_ANYD(volume[mfi]),
                    AMREX_MFITER_REDUCE_SUM(&sum));
     }
 
@@ -356,9 +351,9 @@ Castro::volWgtSumOneSide (const std::string& name,
 
         if ( doSum ) {
 
-#pragma gpu
-          ca_summass(AMREX_ARLIM_ARG(loFinal),AMREX_ARLIM_ARG(hiFinal),BL_TO_FORTRAN_3D(fab),
-		     ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),
+#pragma gpu box(box)
+          ca_summass(AMREX_INT_ANYD(loFinal),AMREX_INT_ANYD(hiFinal),BL_TO_FORTRAN_ANYD(fab),
+		     AMREX_REAL_ANYD(dx),BL_TO_FORTRAN_ANYD(volume[mfi]),
                      AMREX_MFITER_REDUCE_SUM(&sum));
 
         }
@@ -406,7 +401,6 @@ Castro::locWgtSumOneSide (const std::string& name,
     {
         FArrayBox& fab = (*mf)[mfi];
 
-        Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
@@ -452,12 +446,11 @@ Castro::locWgtSumOneSide (const std::string& name,
 
         if ( doSum ) {
 
-          ca_sumlocmass(ARLIM_3D(loFinal),ARLIM_3D(hiFinal),BL_TO_FORTRAN_3D(fab),
-			ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir);
+#pragma gpu box(box)
+          ca_sumlocmass(AMREX_INT_ANYD(loFinal), AMREX_INT_ANYD(hiFinal), BL_TO_FORTRAN_ANYD(fab),
+			AMREX_REAL_ANYD(dx), BL_TO_FORTRAN_ANYD(volume[mfi]), AMREX_MFITER_REDUCE_SUM(&sum), idir);
 
         }
-     
-        sum += s;
         
     }
 
@@ -498,15 +491,14 @@ Castro::volProductSum (const std::string& name1,
         const FArrayBox& fab1 = (*mf1)[mfi];
         const FArrayBox& fab2 = (*mf2)[mfi];
     
-        Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
 
-	ca_sumproduct(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab1),
-		      BL_TO_FORTRAN_3D(fab2),ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s);
-        
-        sum += s;
+#pragma gpu box(box)
+	ca_sumproduct(AMREX_INT_ANYD(lo),AMREX_INT_ANYD(hi),BL_TO_FORTRAN_ANYD(fab1),
+		      BL_TO_FORTRAN_ANYD(fab2),AMREX_REAL_ANYD(dx),BL_TO_FORTRAN_ANYD(volume[mfi]),
+                      AMREX_MFITER_REDUCE_SUM(&sum));
     }
 
     if (!local)
@@ -542,15 +534,13 @@ Castro::locSquaredSum (const std::string& name,
     {
         const FArrayBox& fab = (*mf)[mfi];
     
-        Real s = 0.0;
         const Box& box  = mfi.tilebox();
         const int* lo   = box.loVect();
         const int* hi   = box.hiVect();
 
-	ca_sumlocsquaredmass(ARLIM_3D(lo),ARLIM_3D(hi),BL_TO_FORTRAN_3D(fab),
-			     ZFILL(dx),BL_TO_FORTRAN_3D(volume[mfi]),&s,idir);
-
-        sum += s;
+#pragma gpu box(box)
+	ca_sumlocsquaredmass(AMREX_INT_ANYD(lo), AMREX_INT_ANYD(hi), BL_TO_FORTRAN_ANYD(fab),
+			     AMREX_REAL_ANYD(dx), BL_TO_FORTRAN_ANYD(volume[mfi]), AMREX_MFITER_REDUCE_SUM(&sum), idir);
     }
 
     if (!local)

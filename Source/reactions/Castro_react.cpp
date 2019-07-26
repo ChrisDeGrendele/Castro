@@ -7,15 +7,22 @@
 using std::string;
 using namespace amrex;
 
-#ifndef SDC
-
 void
 Castro::strang_react_first_half(Real time, Real dt)
 {
+    BL_PROFILE("Castro::strang_react_first_half()");
+
+    // Sanity check: should only be in here if we're doing CTU or MOL.
+
+    if (time_integration_method != CornerTransportUpwind && time_integration_method != MethodOfLines) {
+        amrex::Error("Strang reactions are only supported for the CTU and MOL advance.");
+    }
 
     // Get the reactions MultiFab to fill in.
 
     MultiFab& reactions = get_old_data(Reactions_Type);
+
+    // Ensure we always have valid data, even if we don't do the burn.
 
     reactions.setVal(0.0);
 
@@ -24,6 +31,10 @@ Castro::strang_react_first_half(Real time, Real dt)
     // Get the current state data.
 
     MultiFab& state = Sborder;
+
+    // Check if we have any zones to burn.
+
+    if (!valid_zones_to_burn(state)) return;
 
     const int ng = state.nGrow();
 
@@ -108,13 +119,13 @@ Castro::strang_react_first_half(Real time, Real dt)
 
     }
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "\n" << "... Entering burner and doing half-timestep of burning." << "\n";
+    if (verbose)
+        amrex::Print() << "... Entering burner and doing half-timestep of burning." << std::endl << std::endl;
 
     react_state(*state_temp, *reactions_temp, *mask_temp, *weights_temp, time, dt, 1, ng);
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... Leaving burner after completing half-timestep of burning." << "\n";
+    if (verbose)
+        amrex::Print() << "... Leaving burner after completing half-timestep of burning." << std::endl << std::endl;
 
     // Note that this FillBoundary *must* occur before we copy any data back
     // to the main state data; it is the only way to ensure that the parallel
@@ -135,7 +146,7 @@ Castro::strang_react_first_half(Real time, Real dt)
 
     // Ensure consistency in internal energy and recompute temperature.
 
-    clean_state(state);
+    clean_state(state, time, state.nGrow());
 
 }
 
@@ -144,14 +155,30 @@ Castro::strang_react_first_half(Real time, Real dt)
 void
 Castro::strang_react_second_half(Real time, Real dt)
 {
+    BL_PROFILE("Castro::strang_react_second_half()");
+
+    // Sanity check: should only be in here if we're doing CTU or MOL.
+
+    if (time_integration_method != CornerTransportUpwind && time_integration_method != MethodOfLines) {
+        amrex::Error("Strang reactions are only supported for the CTU and MOL advance.");
+    }
 
     MultiFab& reactions = get_new_data(Reactions_Type);
 
+    // Ensure we always have valid data, even if we don't do the burn.
+
     reactions.setVal(0.0);
+
+    if (Knapsack_Weight_Type > 0)
+        get_new_data(Knapsack_Weight_Type).setVal(1.0);
 
     if (do_react != 1) return;
 
     MultiFab& state = get_new_data(State_Type);
+
+    // Check if we have any zones to burn.
+
+    if (!valid_zones_to_burn(state)) return;
 
     // To be consistent with other source term types,
     // we are only applying this on the interior zones.
@@ -210,13 +237,13 @@ Castro::strang_react_second_half(Real time, Real dt)
 
     }
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "\n" << "... Entering burner and doing half-timestep of burning." << "\n";
+    if (verbose)
+        amrex::Print() << "... Entering burner and doing half-timestep of burning." << std::endl << std::endl;
 
     react_state(*state_temp, *reactions_temp, *mask_temp, *weights_temp, time, dt, 2, ng);
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "... Leaving burner after completing half-timestep of burning." << "\n";
+    if (verbose)
+        amrex::Print() << "... Leaving burner after completing half-timestep of burning." << std::endl << std::endl;
 
     state_temp->FillBoundary(geom.periodicity());
 
@@ -228,8 +255,7 @@ Castro::strang_react_second_half(Real time, Real dt)
 
     }
 
-    int is_new = 1;
-    clean_state(is_new, state.nGrow());
+    clean_state(state, time + 0.5 * dt, state.nGrow());
 
 }
 
@@ -241,6 +267,12 @@ Castro::react_state(MultiFab& s, MultiFab& r, const iMultiFab& mask, MultiFab& w
 
     BL_PROFILE("Castro::react_state()");
 
+    // Sanity check: should only be in here if we're doing CTU or MOL.
+
+    if (time_integration_method != CornerTransportUpwind && time_integration_method != MethodOfLines) {
+        amrex::Error("Strang reactions are only supported for the CTU and MOL advance.");
+    }
+
     const Real strt_time = ParallelDescriptor::second();
 
     // Initialize the weights to the default value (everything is weighted equally).
@@ -250,34 +282,38 @@ Castro::react_state(MultiFab& s, MultiFab& r, const iMultiFab& mask, MultiFab& w
     // Start off assuming a successful burn.
 
     burn_success = 1;
+    Real burn_failed = 0.0;
 
 #ifdef _OPENMP
 #pragma omp parallel
 #endif
-    for (MFIter mfi(s, true); mfi.isValid(); ++mfi)
+    for (MFIter mfi(s, TilingIfNotGPU()); mfi.isValid(); ++mfi)
     {
 
 	const Box& bx = mfi.growntilebox(ngrow);
 
 	// Note that box is *not* necessarily just the valid region!
-	ca_react_state(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-		       BL_TO_FORTRAN_3D(s[mfi]),
-		       BL_TO_FORTRAN_3D(r[mfi]),
-		       BL_TO_FORTRAN_3D(w[mfi]),
-		       BL_TO_FORTRAN_3D(mask[mfi]),
+#pragma gpu box(bx)
+	ca_react_state(AMREX_INT_ANYD(bx.loVect()), AMREX_INT_ANYD(bx.hiVect()),
+		       BL_TO_FORTRAN_ANYD(s[mfi]),
+		       BL_TO_FORTRAN_ANYD(r[mfi]),
+		       BL_TO_FORTRAN_ANYD(w[mfi]),
+		       BL_TO_FORTRAN_ANYD(mask[mfi]),
 		       time, dt_react, strang_half,
-                       &burn_success);
+	               AMREX_MFITER_REDUCE_SUM(&burn_failed));
 
     }
 
+    if (burn_failed != 0.0) burn_success = 0;
+
     ParallelDescriptor::ReduceIntMin(burn_success);
 
-    if (verbose) {
+    if (print_update_diagnostics) {
 
 	Real e_added = r.sum(NumSpec + 1);
 
-	if (ParallelDescriptor::IOProcessor() && e_added != 0.0)
-	    std::cout << "... (rho e) added from burning: " << e_added << std::endl;
+	if (e_added != 0.0)
+            amrex::Print() << "... (rho e) added from burning: " << e_added << std::endl << std::endl;
 
     }
 
@@ -291,8 +327,7 @@ Castro::react_state(MultiFab& s, MultiFab& r, const iMultiFab& mask, MultiFab& w
 #endif
         ParallelDescriptor::ReduceRealMax(run_time,IOProc);
 
-	if (ParallelDescriptor::IOProcessor())
-	  std::cout << "Castro::react_state() time = " << run_time << "\n" << "\n";
+        amrex::Print() << "Castro::react_state() time = " << run_time << "\n" << "\n";
 #ifdef BL_LAZY
 	});
 #endif
@@ -300,19 +335,23 @@ Castro::react_state(MultiFab& s, MultiFab& r, const iMultiFab& mask, MultiFab& w
 
 }
 
-#else
-
-// SDC version
+// Simplified SDC version
 
 void
 Castro::react_state(Real time, Real dt)
 {
     BL_PROFILE("Castro::react_state()");
 
+    // Sanity check: should only be in here if we're doing simplified SDC.
+
+    if (time_integration_method != SimplifiedSpectralDeferredCorrections) {
+        amrex::Error("This react_state interface is only supported for simplified SDC.");
+    }
+
     const Real strt_time = ParallelDescriptor::second();
 
-    if (verbose && ParallelDescriptor::IOProcessor())
-        std::cout << "\n" << "... Entering burner and doing full timestep of burning." << "\n";
+    if (verbose)
+        amrex::Print() << "... Entering burner and doing full timestep of burning." << std::endl << std::endl;
 
     MultiFab& S_old = get_old_data(State_Type);
     MultiFab& S_new = get_new_data(State_Type);
@@ -345,28 +384,31 @@ Castro::react_state(Real time, Real dt)
 	FArrayBox& r       = reactions[mfi];
 	const IArrayBox& m = interior_mask[mfi];
 
-	ca_react_state(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
-		       uold.dataPtr(), ARLIM_3D(uold.loVect()), ARLIM_3D(uold.hiVect()),
-		       unew.dataPtr(), ARLIM_3D(unew.loVect()), ARLIM_3D(unew.hiVect()),
-		       a.dataPtr(), ARLIM_3D(a.loVect()), ARLIM_3D(a.hiVect()),
-		       r.dataPtr(), ARLIM_3D(r.loVect()), ARLIM_3D(r.hiVect()),
-		       m.dataPtr(), ARLIM_3D(m.loVect()), ARLIM_3D(m.hiVect()),
-		       time, dt, sdc_iteration);
+	ca_react_state_simplified_sdc(ARLIM_3D(bx.loVect()), ARLIM_3D(bx.hiVect()),
+                                      uold.dataPtr(), ARLIM_3D(uold.loVect()), ARLIM_3D(uold.hiVect()),
+                                      unew.dataPtr(), ARLIM_3D(unew.loVect()), ARLIM_3D(unew.hiVect()),
+                                      a.dataPtr(), ARLIM_3D(a.loVect()), ARLIM_3D(a.hiVect()),
+                                      r.dataPtr(), ARLIM_3D(r.loVect()), ARLIM_3D(r.hiVect()),
+                                      m.dataPtr(), ARLIM_3D(m.loVect()), ARLIM_3D(m.hiVect()),
+                                      time, dt, sdc_iteration);
 
     }
 
     if (ng > 0)
         S_new.FillBoundary(geom.periodicity());
 
-    if (verbose) {
+    if (print_update_diagnostics) {
 
         Real e_added = reactions.sum(NumSpec + 1);
 
-	if (ParallelDescriptor::IOProcessor() && e_added != 0.0)
-	    std::cout << "... (rho e) added from burning: " << e_added << std::endl;
+	if (e_added != 0.0)
+            amrex::Print() << "... (rho e) added from burning: " << e_added << std::endl << std::endl;
 
-	if (ParallelDescriptor::IOProcessor())
-	    std::cout << "... Leaving burner after completing full timestep of burning." << "\n";
+    }
+
+    if (verbose) {
+
+        amrex::Print() << "... Leaving burner after completing full timestep of burning." << std::endl << std::endl;
 
         const int IOProc   = ParallelDescriptor::IOProcessorNumber();
         Real      run_time = ParallelDescriptor::second() - strt_time;
@@ -376,8 +418,7 @@ Castro::react_state(Real time, Real dt)
 #endif
         ParallelDescriptor::ReduceRealMax(run_time, IOProc);
 
-	if (ParallelDescriptor::IOProcessor())
-	  std::cout << "Castro::react_state() time = " << run_time << "\n" << "\n";
+        amrex::Print() << "Castro::react_state() time = " << run_time << std::endl << std::endl;
 #ifdef BL_LAZY
 	});
 #endif
@@ -386,4 +427,119 @@ Castro::react_state(Real time, Real dt)
 
 }
 
-#endif
+
+
+bool
+Castro::valid_zones_to_burn(MultiFab& State)
+{
+
+    // The default values of the limiters are 0 and 1.e200, respectively.
+
+    Real small = 1.e-10;
+    Real large = 1.e199;
+
+    // Check whether we are limiting on either rho or T.
+
+    bool limit_small_rho = react_rho_min >= small;
+    bool limit_large_rho = react_rho_max <= large;
+
+    bool limit_rho = limit_small_rho || limit_large_rho;
+
+    bool limit_small_T = react_T_min >= small;
+    bool limit_large_T = react_T_max <= large;
+
+    bool limit_T = limit_small_T || limit_large_T;
+
+    bool limit = limit_rho || limit_T;
+
+    if (!limit) return true;
+
+    // Now, if we're limiting on rho, collect the
+    // minimum and/or maximum and compare.
+
+    amrex::Vector<Real> small_limiters;
+    amrex::Vector<Real> large_limiters;
+
+    bool local = true;
+
+    Real small_dens = small;
+    Real large_dens = large;
+
+    if (limit_small_rho) {
+      small_dens = State.min(Density, 0, local);
+      small_limiters.push_back(small_dens);
+    }
+
+    if (limit_large_rho) {
+      large_dens = State.max(Density, 0, local);
+      large_limiters.push_back(large_dens);
+    }
+
+    Real small_T = small;
+    Real large_T = large;
+
+    if (limit_small_T) {
+      small_T = State.min(Temp, 0, local);
+      small_limiters.push_back(small_T);
+    }
+
+    if (limit_large_T) {
+      large_T = State.max(Temp, 0, local);
+      large_limiters.push_back(large_T);
+    }
+
+    // Now do the reductions. We're being careful here
+    // to limit the amount of work and communication,
+    // because regularly doing this check only makes sense
+    // if it is negligible compared to the amount of work
+    // needed to just do the burn as normal.
+
+    int small_size = small_limiters.size();
+
+    if (small_size > 0) {
+        amrex::ParallelDescriptor::ReduceRealMin(small_limiters.dataPtr(), small_size);
+
+        if (limit_small_rho) {
+            small_dens = small_limiters[0];
+            if (limit_small_T) {
+                small_T = small_limiters[1];
+            }
+        } else {
+            small_T = small_limiters[0];
+        }
+    }
+
+    int large_size = large_limiters.size();
+
+    if (large_size > 0) {
+        amrex::ParallelDescriptor::ReduceRealMax(large_limiters.dataPtr(), large_size);
+
+        if (limit_large_rho) {
+            large_dens = large_limiters[0];
+            if (limit_large_T) {
+                large_T = large_limiters[1];
+            }
+        } else {
+            large_T = large_limiters[1];
+        }
+    }
+
+    // Finally check on whether min <= rho <= max
+    // and min <= T <= max. The defaults are small
+    // and large respectively, so if the limiters
+    // are not on, these checks will not be triggered.
+
+    if (large_dens >= react_rho_min && small_dens <= react_rho_max &&
+        large_T >= react_T_min && small_T <= react_T_max) {
+        return true;
+    }
+
+    // If we got to this point, we did not survive the limiters,
+    // so there are no zones to burn.
+
+    if (verbose > 1)
+        amrex::Print() << "  No valid zones to burn, skipping react_state()." << std::endl;
+
+    return false;
+
+}

@@ -284,8 +284,9 @@ void HypreABec::apply(MultiFab& product, MultiFab& vector, int icomp,
   Vector<Real> r;
   Real foo=1.e200;
 
-  Real *mat, *vec;
+  Real *vec;
   FArrayBox fnew;
+  FArrayBox matfab;
   for (MFIter vi(vector); vi.isValid(); ++vi) {
     i = vi.index();
     const Box &reg = grids[i];
@@ -314,7 +315,8 @@ void HypreABec::apply(MultiFab& product, MultiFab& vector, int icomp,
     vec = product[vi].dataPtr();
 
     int volume = reg.numPts();
-    mat = hypre_CTAlloc(double, size*volume);
+    matfab.resize(reg,size);
+    Real* mat = matfab.dataPtr();
 
     // build matrix interior
 
@@ -403,8 +405,6 @@ void HypreABec::apply(MultiFab& product, MultiFab& vector, int icomp,
 
     HYPRE_StructMatrixSetBoxValues(A0, loV(reg), hiV(reg),
 				   size, stencil_indices, mat);
-
-    hypre_TFree(mat);
   }
 
   HYPRE_StructMatrixAssemble(A0);
@@ -514,7 +514,7 @@ void HypreABec::getFaceMetric(Vector<Real>& r,
                               const Geometry& geom)
 {
   if (ori.coordDir() == 0) {
-    if (Geometry::IsCartesian()) {
+    if (geom.IsCartesian()) {
       r.resize(1, 1.0);
     }
     else { // RZ or Spherical
@@ -525,18 +525,18 @@ void HypreABec::getFaceMetric(Vector<Real>& r,
       else {
         r[0] = geom.HiEdge(reg.bigEnd(0), 0);
       }
-      if (Geometry::IsSPHERICAL()) {
+      if (geom.IsSPHERICAL()) {
         r[0] *= r[0];
       }
     }
   }
   else {
-    if (Geometry::IsCartesian()) {
+    if (geom.IsCartesian()) {
       r.resize(reg.length(0), 1.0);
     }
     else { // RZ
       // We only support spherical coordinates in 1D
-      BL_ASSERT(Geometry::IsRZ());
+      BL_ASSERT(geom.IsRZ());
       geom.GetCellLoc(r, reg, 0);
     }
   }
@@ -560,13 +560,13 @@ void HypreABec::setupSolver(Real _reltol, Real _abstol, int maxiter)
   Vector<Real> r;
   Real foo=1.e200;
 
-  Real *mat;
+  FArrayBox matfab;
   for (MFIter ai(*acoefs); ai.isValid(); ++ai) {
     i = ai.index();
     const Box &reg = grids[i];
 
-    int volume = reg.numPts();
-    mat = hypre_CTAlloc(double, size*volume);
+    matfab.resize(reg,size);
+    Real* mat = matfab.dataPtr();
 
     // build matrix interior
 
@@ -634,8 +634,6 @@ void HypreABec::setupSolver(Real _reltol, Real _abstol, int maxiter)
 
     HYPRE_StructMatrixSetBoxValues(A, loV(reg), hiV(reg),
 				   size, stencil_indices, mat);
-
-    hypre_TFree(mat);
   }
 
   HYPRE_StructMatrixAssemble(A);
