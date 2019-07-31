@@ -23,8 +23,8 @@ castro.do_hydro = 1
 castro.do_react = 0
 castro.ppm_type = 1
 castro.time_integration_method = 0 #strang not mol
-castro.do_radiation = 1                    # CHECK
-castro.do_reflux = 1                       # CHECK?
+castro.do_radiation = 1    
+castro.do_reflux = 1      
 
 # TIME STEP CONTROL
 castro.dt_cutoff      = 5.e-20  # level 0 timestep below which we halt
@@ -52,7 +52,7 @@ amr.plot_int = 5               # number of timesteps between plotfiles
 
 
 # PROBIN FILENAME
-amr.probin_file = probin.starlord
+amr.probin_file = probin.3d
 
 
 
@@ -83,7 +83,7 @@ radiation.limiter = 0     # 0 = no limiter
 radiation.delta_temp            = 0.01
 
 # RADIATION VERBOSITY
-radiation.v               = 2    # verbosity
+radiation.v               = 1    # verbosity
 
 # We set radiation boundary conditions directly since they do not
 # correspond neatly to the physical boundary conditions used for the fluid.
@@ -91,8 +91,8 @@ radiation.v               = 2    # verbosity
 # 101 = LO_DIRICHLET           102 = LO_NEUMANN
 # 104 = LO_MARSHAK             105 = LO_SANCHEZ_POMRANING
 
-radiation.lo_bc     = 102 102 102                        #CHECK?------------
-radiation.hi_bc     = 102 102 102                        #CHECK?------------
+radiation.lo_bc     = 102 102 102                      
+radiation.hi_bc     = 102 102 102                      
 
 # For each boundary, we can specify either a constant boundary value
 # or use a Fortran function FORT_RADBNDRY to specify values that vary
@@ -109,8 +109,8 @@ radiation.hi_bcflag = 0 0 0
 # 104 = LO_MARSHAK             bcval is incident flux
 # 105 = LO_SANCHEZ_POMRANING   bcval is incident flux
 
-radiation.lo_bcval = 7.5657313567241239e-7   0.0 0.0
-radiation.hi_bcval = 0.0040567429273323397   0.0 0.0
+radiation.lo_bcval = 0.0 0.0 0.0
+radiation.hi_bcval = 0.0 0.0 0.0
 
 radiation.do_real_eos = 1
 
@@ -170,4 +170,17 @@ DistributionMapping.strategy = KNAPSACK
 DistributionMapping.strategy = SFC
 
 
+##################################################################
 
+################################################################
+# Reset (rho*e) if it goes negative in the transverse terms
+castro.transverse_reset_rhoe = 1
+
+# Reset rho if it goes negative in the transverse terms
+castro.transverse_reset_density = 1
+
+# Choose the method used on a negative density reset
+castro.density_reset_method = 2
+
+# Explicitly limit fluxes to avoid hitting a negative density
+castro.limit_fluxes_on_small_dens = 1
