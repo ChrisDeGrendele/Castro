@@ -1,6 +1,6 @@
 # ------------------  INPUTS TO MAIN PROGRAM  -------------------
-max_step = 1000000
-stop_time = 10000
+max_step = -1
+stop_time = 1000000
 
 # PROBLEM SIZE & GEOMETRY
 geometry.is_periodic =  1      1      1
@@ -8,7 +8,6 @@ geometry.coord_sys   =  0
 geometry.prob_lo     =  -1.0e14 -1.0e14 -1.0e14
 geometry.prob_hi     =   1.0e14  1.0e14  1.0e14
 amr.n_cell           =  128    128    128  #This will lead to ~ cell size in paper!
-#amr.n_cell          = 64 64 64
 
 # >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
 # 0 = Interior           3 = Symmetry
@@ -48,7 +47,7 @@ amr.checkpoint_files_output = 1  # 1 => Don't suppress plotfiles
 
 #PLOTFILES
 amr.plot_files_output = 1     
-amr.plot_int = 5               # number of timesteps between plotfiles
+amr.plot_int = 100               # number of timesteps between plotfiles
 
 
 # PROBIN FILENAME
