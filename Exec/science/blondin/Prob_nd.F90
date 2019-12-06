@@ -86,7 +86,6 @@ subroutine amrex_probinit (init,name,namlen,problo,probhi) bind(c)
 
   ! Calculate ambient state data
 
-  
   eos_state % rho = dens_ambient
   eos_state % p   = p_ambient
   eos_state % T   = temp_ambient ! Initial guess for iterations

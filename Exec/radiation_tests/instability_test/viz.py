@@ -11,8 +11,7 @@ for plot in plotfiles:
     text_string = "T = {} Gyr".format(float(ds.current_time.to('yr')))
     
     sl.save("viz"+plot+".png")
-#    sl.save_annotated("viz"+plot+".png",
-#                  text_annotate=[[(.1, 0.95), text_string]])
+
 
 
 '''

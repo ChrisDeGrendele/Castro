@@ -3,7 +3,7 @@
   r_init = 2.d12
   p_ambient = 1.d21
   exp_energy = 1.d52
-  dens_ambient = 5.d-6
+  dens_ambient = .84
   nsub = 10
   
 /

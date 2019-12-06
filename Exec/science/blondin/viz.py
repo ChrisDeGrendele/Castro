@@ -7,9 +7,9 @@ plotfiles = glob.glob("plt*")
 
 for plot in plotfiles:
     ds = yt.load(plot)
-    sl = yt.sl = yt.SlicePlot(ds, 1, 'density')
+    sl = yt.SlicePlot(ds, 1, 'density')
     text_string = "T = {} Gyr".format(float(ds.current_time.to('yr')))
-    
+    sl.annotate_cell_edges()
     sl.save("viz"+plot+".png")
 #    sl.save_annotated("viz"+plot+".png",
 #                  text_annotate=[[(.1, 0.95), text_string]])

@@ -1,0 +1,52 @@
+For 1,000,000 secounds which = 0.3 years
+128 cells no AMR
+domain = 0,1e14
+./Castro1d inputs1d:
+RUNTIME = 5.002712011
+
+
+For 1,000,000 secounds which = 0.3 years
+128 cells no AMR
+domain = 0,1e14
+mpiexec -n 2 ./Castro1d inputs1d:
+RUNTIME = 4.961122036
+
+
+________________________
+
+
+
+For 1,000,000 secounds which = 0.3 years
+256 cells no AMR
+domain = 0,1e14
+mpiexec ./Castro1d inputs1d:
+RUNTIME = 15.0608604
+------
+in the simulation time of 1e6 seconds, we reach a blast radius of ~5AU ~7.5e11 m
+therefore 1e6 years =3.2e13 seconds
+
+(3.2e13/1e6) * 7.5e11 = 2.4e19 meter domain thats order ~1e18 cells???
+
+Also, with the runtime of 11.7 seconds on two processors
+11.7 seconds * 1e6/.3
+an expected run time of 3.9e7 sec = 10,833 hours on alcyoen with two processors.
+
+if we scale that to 256 processors (linearly) that's still 84 hours...
+------
+
+For 1,000,000 secounds which = 0.3 years
+256 cells no AMR
+domain = 0,1e14
+mpiexec -n 2 ./Castro1d inputs1d:
+RUNTIME = 11.77756214
+
+
+For 1,000,000 secounds which = 0.3 years
+256 cells no AMR
+domain = 0,1e14
+mpiexec -n 4 ./Castro1d inputs1d:
+RUNTIME = 15.67538857
+
+
+
+
