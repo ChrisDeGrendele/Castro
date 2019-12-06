@@ -3,7 +3,7 @@ PROFILE    = FALSE
 
 DEBUG      = FALSE
 
-DIM        = 1
+DIM        = 3
 
 COMP	   = gnu
 
@@ -16,7 +16,8 @@ GPU_COMPATIBLE_PROBLEM = TRUE
 # define the location of the CASTRO top directory
 CASTRO_HOME  := ../../..
 AMREX_HOME   := ../../../../amrex/
-HYPRE_DIR    := /home/cdegrendele/codes/hypre/src/hypre/
+HYPRE_DIR    := ../../../../hypre/
+
 
 # This sets the EOS directory in Castro/EOS
 EOS_DIR     := gamma_law

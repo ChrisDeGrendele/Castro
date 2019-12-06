@@ -47,7 +47,8 @@ amr.checkpoint_files_output = 0  # 1 => Don't suppress plotfiles
 
 #PLOTFILES
 amr.plot_files_output = 1     
-amr.plot_int = 500               # number of timesteps between plotfiles
+amr.plot_int = 100               # number of timesteps between plotfiles
+
 
 
 # PROBIN FILENAME
