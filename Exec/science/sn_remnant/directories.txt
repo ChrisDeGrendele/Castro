@@ -1,0 +1,7 @@
+Blondin/ is an attempt to recreate the blondin paper.
+
+sn_remnant/ is an attempt to turn sedov into a radiaive case. Then let it run for significant time. In order for a radiative shock to occur.
+
+Instability_test is a bump with a radiaivte shock coming through
+
+Instability_test_no_r/ is the same as above but with no radiation. The purpose is to compare instabilities in a radiaition vs non radiative case.  

@@ -1,0 +1,7 @@
+To Do:
+ - Fix the shock coming out of the BC from the right side in the radiative case
+ - Dig up SN remnant solution
+ - Make plot again with V/R thing with front tracker...
+ - This will be wrong ^ play with oppacities to try to mimmick what the blondin paper is doing
+ - compare castro opacities to blondin cooling function. Come up with some solution that does the same thing...
+ 

@@ -1,0 +1,74 @@
+# ------------------  INPUTS TO MAIN PROGRAM  -------------------
+max_step  = 1000    # maximum timestep
+stop_time = -1
+
+geometry.is_periodic = 0 0 0
+
+geometry.coord_sys = 0  # 0 => cart, 1 => RZ, 2 => Spherical
+
+geometry.prob_lo   =   -1000. 0.0    0.0
+geometry.prob_hi   =    5000. 3000   3000
+
+amr.n_cell   = 256 128 128
+
+# REFINEMENT / REGRIDDING
+amr.max_level       = 3       # maximum level number allowed
+amr.ref_ratio       = 2 2 2 2 2 2 # refinement ratio
+amr.regrid_int      = 2 2 2 2 2 2 # how often to regrid
+amr.blocking_factor = 4       # block factor in grid generation
+amr.max_grid_size   = 64
+amr.n_error_buf     = 2 2 2 2 2 2 # number of buffer cells in error est
+amr.n_proper        = 1       # default value
+amr.grid_eff        = 0.7     # what constitutes an efficient grid
+
+# CHECKPOINT FILES
+amr.check_file      = chk     # root name of checkpoint file
+amr.check_int       = 1000      # number of timesteps between checkpoints
+
+# PLOTFILES
+amr.plot_files_output       = 1 # suppress plot files
+amr.plot_file       = plt_
+amr.plot_int        = 5     # number of timesteps between plot files
+amr.derive_plot_vars = ALL
+
+
+# PROBIN FILENAME
+amr.probin_file     = probin.M5
+
+# VERBOSITY
+amr.v = 1
+amr.grid_log        = grdlog  # name of grid logging file
+
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+# 0 = Interior           3 = Symmetry
+# 1 = Inflow             4 = SlipWall
+# 2 = Outflow            5 = NoSlipWall
+# >>>>>>>>>>>>>  BC FLAGS <<<<<<<<<<<<<<<<
+castro.lo_bc       =  1    4    4
+castro.hi_bc       =  4    4    4
+
+# WHICH PHYSICS
+castro.do_grav        = 0
+castro.do_hydro       = 1
+castro.do_radiation   = 0
+castro.do_reflux      = 1       # 1 => do refluxing
+castro.do_react       = 0       # reactions?
+
+# hydro cutoff parameters
+castro.small_dens     = 1.e-20
+
+# External source terms
+castro.add_ext_src=0            #  Add external source terms
+
+# TIME STEP CONTROL
+castro.cfl            = 0.8     # cfl number for hyperbolic system
+castro.init_shrink    = 0.1     # scale back initial timestep
+castro.change_max     = 1.1 
+#castro.initial_dt     = 0.01
+castro.dt_cutoff      = 1.e-20  # level 0 timestep below which we halt
+#castro.fixed_dt       = 1.e-15
+
+# DIAGNOSTICS & VERBOSITY
+castro.sum_interval   = 1       # timesteps between computing mass
+castro.v = 1
+

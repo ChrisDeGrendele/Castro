@@ -1,0 +1,33 @@
+&fortin
+  rho0 = 5.0d-13
+  T0 = 100.0d0
+  v0 = 588588.075591d0
+  rho1 = 1.2d-12
+  T1 = 855.719921848
+  v1 = 163591.632018d0
+  v1 = 0.0d0
+  idir=1
+
+  rho_bump = 4.8d-12
+
+
+ e1 = 10.0d0
+ e0 = 24.0d0
+ e_bump = 2.5d0
+
+
+/
+
+
+&extern
+
+  eos_gamma = 1.6666666667
+
+/
+
+&tagging
+
+  max_tempgrad_rel_lev = 20
+  tempgrad_rel = 0.1
+
+/

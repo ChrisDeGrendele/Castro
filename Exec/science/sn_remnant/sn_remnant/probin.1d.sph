@@ -1,0 +1,29 @@
+&fortin
+
+  r_init = 2.d12
+  p_ambient = 1.d21
+  exp_energy = 1.d52
+  dens_ambient = 1.40616d-24
+  nsub = 10
+  
+/
+
+&tagging
+
+  dengrad_rel = 0.25
+  max_dengrad_rel_lev = 20
+
+ # Planck mean opacity
+  radiation.const_kappa_p =  2e-16 
+  radiation.kappa_p_exp_m =  0.0
+  radiation.kappa_p_exp_n =  0.0
+
+  # Rosseland mean opacity
+  radiation.const_kappa_r =  2e-10 
+  radiation.kappa_r_exp_m =  0.0
+  radiation.kappa_r_exp_n =  0.0
+/
+
+&extern
+
+/
